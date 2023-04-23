@@ -44,14 +44,11 @@ TagManager:
   - name: Background
     uniqueID: 3820517125
     locked: 0
-  - name: Grass
+  - name: Terrain
     uniqueID: 275533371
     locked: 0
   - name: Walls
     uniqueID: 2024282299
-    locked: 0
-  - name: Bricks
-    uniqueID: 3794071529
     locked: 0
   - name: Traps
     uniqueID: 107077825
@@ -61,4 +58,7 @@ TagManager:
     locked: 0
   - name: Player
     uniqueID: 928301071
+    locked: 0
+  - name: 
+    uniqueID: 3794071529
     locked: 0
