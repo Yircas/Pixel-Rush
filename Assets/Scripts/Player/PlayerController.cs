@@ -11,22 +11,38 @@ public class PlayerController : MonoBehaviour
     [Header("Movement")]
     [SerializeField] float runVelocity = 5f;
     [SerializeField] float jumpVelocity = 5f;
+    private Vector2 moveInput;
+    private bool playerHasDoubleJumped;
 
     //Contains the individual rigidbodies to be used for the player
     [Header("Rigidbody Components")]
     [SerializeField] CapsuleCollider2D playerBody;
     [SerializeField] BoxCollider2D playerFeet;
 
-    private Vector2 moveInput;
-    private bool playerHasDoubleJumped;
+    //Options for dashing
+    [Header("Dashing")]
+    [SerializeField] float dashVelocity = 40f;
+    [SerializeField] float dashTime = 0.1f;
+    [SerializeField] float dashCooldown = 0.5f;
+    private Vector2 dashDirection;
+    private bool isDashing;
+    private bool canDash = true;
 
+    //referenced components
     private Rigidbody2D rigidbodyPlayer;
     private Animator animatorPlayer;
+    private TrailRenderer trailRendererPlayer;
+
+    // other variables
+    private float originalGravity;
+    private bool onCooldown;
 
     void Awake()
     {
         rigidbodyPlayer = GetComponent<Rigidbody2D>();
         animatorPlayer = GetComponent<Animator>();
+        trailRendererPlayer = GetComponent<TrailRenderer>();
+        originalGravity = rigidbodyPlayer.gravityScale;
     }
 
     void Update()
@@ -37,7 +53,7 @@ public class PlayerController : MonoBehaviour
         FlipSprite();
     }
 
-    //flips the player's sprite correctly
+    // flips the player's sprite correctly
     private void FlipSprite()
     {
         bool playerHasHorizontalSpeed = Mathf.Abs(rigidbodyPlayer.velocity.x) > Mathf.Epsilon;
@@ -48,14 +64,13 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    //method for move input in InputSystem
+    // method for move input in InputSystem
     private void OnMove(InputValue value)
     {
         moveInput = value.Get<Vector2>();
     }
 
-    //method for jump input in InputSystem
-    //TODO: replicate the double jump mechanic from celeste
+    // method for jump input in InputSystem
     private void OnJump(InputValue value)
     {
         LayerMask terrainLayer = LayerMask.GetMask("Terrain");
@@ -75,9 +90,59 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    //manages the running functionality and the animation for running
+    // method for dash input in InputSystem
+    private void OnDash(InputValue Value)
+    {
+        if(! canDash)
+        {
+            return;
+        }
+        StartCoroutine(Dash());
+    }
+
+    // actual dash mechanic
+    private IEnumerator Dash()
+    {
+        canDash = false;
+        isDashing = true;
+        onCooldown = true;
+        rigidbodyPlayer.gravityScale = 0f;
+
+        // default to dashing forwards, if the player is standing still
+        // TODO: fix animation here
+        if(moveInput == Vector2.zero)
+        {
+            rigidbodyPlayer.velocity = new Vector2(transform.localScale.x * dashVelocity, 0f);
+        }
+        else if(Math.Abs(moveInput.x) > float.Epsilon && Math.Abs(moveInput.y) > float.Epsilon)
+        {
+            rigidbodyPlayer.velocity = new Vector2(moveInput.x * dashVelocity * 0.8f, moveInput.y * dashVelocity * 0.8f);
+        }
+        else
+        {
+            rigidbodyPlayer.velocity = new Vector2(moveInput.x * dashVelocity, moveInput.y * dashVelocity * 0.7f);
+        }
+
+        trailRendererPlayer.emitting = true;
+
+        yield return new WaitForSeconds(dashTime);
+        rigidbodyPlayer.gravityScale = originalGravity;
+        isDashing = false;
+        trailRendererPlayer.emitting = false;
+
+        yield return new WaitForSeconds(dashCooldown);
+        onCooldown = false;
+    }
+
+    // manages the running functionality and the animation for running
     private void Run()
     {
+
+        if(isDashing)
+        {
+            return;
+        }
+
         Vector2 moveVector = new Vector2(moveInput.x * runVelocity, rigidbodyPlayer.velocity.y);
         rigidbodyPlayer.velocity = moveVector;
 
@@ -88,7 +153,7 @@ public class PlayerController : MonoBehaviour
         animatorPlayer.SetBool("isRunning", playerHasHorizontalMovement);
     }
 
-    //manages the animations for jumping and falling
+    // manages the animations for jumping and falling
     private void Fall()
     {
         bool playerIsOnGround = playerFeet.IsTouchingLayers(LayerMask.GetMask("Terrain"));
@@ -113,7 +178,8 @@ public class PlayerController : MonoBehaviour
         animatorPlayer.SetBool("isJumping", false);
     }
 
-    //necessary changes made, when touching the ground
+    // necessary changes made, when touching the ground
+    // 1. re-enable double jump
     private void UpdateOnGround()
     {
         LayerMask terrainLayer = LayerMask.GetMask("Terrain");
@@ -121,5 +187,10 @@ public class PlayerController : MonoBehaviour
 
         playerHasDoubleJumped = false;
         animatorPlayer.SetBool("isDoubleJumping", false);
+
+        if(! onCooldown)
+        {
+            canDash = true;
+        }
     }
 }
