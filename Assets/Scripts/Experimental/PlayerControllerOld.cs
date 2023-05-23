@@ -4,23 +4,23 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerController : MonoBehaviour
+public class PlayerControllerOld : MonoBehaviour
 {
 
-    // Adjust the players movement speeds
+    //Adjust the players movement speeds
     [Header("Movement")]
     [SerializeField] float runVelocity = 5f;
     [SerializeField] float jumpVelocity = 5f;
     private Vector2 moveInput;
+    private bool playerHasDoubleJumped;
     private bool playerHasUpwardMovement;
 
-    // Contains the individual colliders to be used for the player
-    [Header("Collider Components")]
-    [SerializeField] BoxCollider2D playerBody;
+    //Contains the individual rigidbodies to be used for the player
+    [Header("Rigidbody Components")]
+    [SerializeField] PolygonCollider2D playerBody;
     [SerializeField] BoxCollider2D playerFeet;
-    [SerializeField] BoxCollider2D playerFront;
 
-    // Options for dashing
+    //Options for dashing
     [Header("Dashing")]
     [SerializeField] float dashVelocity = 40f;
     [SerializeField] float dashTime = 0.1f;
@@ -29,16 +29,7 @@ public class PlayerController : MonoBehaviour
     private bool isDashing;
     private bool canDash = true;
 
-    // Adjust wall slide and the jump
-    [Header("Wall Jumping")]
-    [SerializeField] float wallSlideSpeed = 1f;
-    [SerializeField] float wallJumpVelocity = 5f;
-    [SerializeField] float wallJumpTime = 0.2f;
-    private bool isWallSliding;
-    private bool isWallJumping;
-    private float flipX;
-
-    // referenced components
+    //referenced components
     private Rigidbody2D rigidbodyPlayer;
     private Animator animatorPlayer;
     private TrailRenderer trailRendererPlayer;
@@ -55,22 +46,16 @@ public class PlayerController : MonoBehaviour
         originalGravity = rigidbodyPlayer.gravityScale;
     }
 
-    // NOTE: do not put FlipPlayer() before Run(), or it will break
     void Update()
     {
-        // state updates
         UpdateOnGround();
-        Fall();
-
-        // actions
         Run();
-        WallSlide();
-        WallJump();
-        FlipPlayer();
+        Fall();
+        FlipSprite();
     }
 
     // flips the player's sprite correctly
-    private void FlipPlayer()
+    private void FlipSprite()
     {
         bool playerHasHorizontalSpeed = Mathf.Abs(rigidbodyPlayer.velocity.x) > Mathf.Epsilon;
 
@@ -84,41 +69,36 @@ public class PlayerController : MonoBehaviour
     private void OnMove(InputValue value)
     {
         moveInput = value.Get<Vector2>();
-
-        // disables slower diagonal movement
-        moveInput.x = Mathf.Round(moveInput.x);
-        moveInput.y = Mathf.Round(moveInput.y);
     }
 
     // method for jump input in InputSystem
     private void OnJump(InputValue value)
     {
-        if(PlayerOnGround() && value.isPressed)
+        LayerMask terrainLayer = LayerMask.GetMask("Terrain");
+
+        if(playerFeet.IsTouchingLayers(terrainLayer) && value.isPressed)
         {
             rigidbodyPlayer.velocity += new Vector2(0f, jumpVelocity);
         }
-        else if(isWallSliding && value.isPressed)
-        {
-            isWallJumping = true;
-            flipX = -transform.localScale.x;
-            Invoke("StopWallJump", wallJumpTime);
-        }
     }
 
-    private void StopWallJump()
+    private void OldOnJump(InputValue value)
     {
-        isWallJumping = false;
-    }
+        LayerMask terrainLayer = LayerMask.GetMask("Terrain");
 
-    // actual wall jump mechanic, invoked in OnJump()
-    private void WallJump()
-    {
-        if(! isWallJumping)
+        if(playerFeet.IsTouchingLayers(terrainLayer) && value.isPressed)
         {
-            return;
+            rigidbodyPlayer.velocity += new Vector2(0f, jumpVelocity);
+            playerHasDoubleJumped = false;
         }
-
-        rigidbodyPlayer.velocity = new Vector2(flipX * runVelocity, wallJumpVelocity);
+        else if(value.isPressed && ! playerHasDoubleJumped)
+        {
+            rigidbodyPlayer.velocity = new Vector2(moveInput.x, jumpVelocity * 1f);
+            animatorPlayer.SetBool("isJumping", false);
+            animatorPlayer.SetBool("isFalling", false);
+            animatorPlayer.SetBool("isDoubleJumping", true);
+            playerHasDoubleJumped = true;
+        }
     }
 
     // method for dash input in InputSystem
@@ -142,16 +122,15 @@ public class PlayerController : MonoBehaviour
         animatorPlayer.SetBool("isDashing", true);
 
         // default to dashing forwards, if the player is standing still
+        // TODO: fix animation here
         if(moveInput == Vector2.zero)
         {
-            rigidbodyPlayer.velocity = new Vector2(moveInput.x * dashVelocity, 0f);
+            rigidbodyPlayer.velocity = new Vector2(transform.localScale.x * dashVelocity, 0f);
         }
-        // diagonal dash
         else if(Math.Abs(moveInput.x) > float.Epsilon && Math.Abs(moveInput.y) > float.Epsilon)
         {
-            rigidbodyPlayer.velocity = new Vector2(moveInput.x * dashVelocity * 0.6f, moveInput.y * dashVelocity * 0.6f);
+            rigidbodyPlayer.velocity = new Vector2(moveInput.x * dashVelocity * 0.9f, moveInput.y * dashVelocity * 0.9f);
         }
-        // vertical and horizontal dash
         else
         {
             rigidbodyPlayer.velocity = new Vector2(moveInput.x * dashVelocity, moveInput.y * dashVelocity * 0.7f);
@@ -184,15 +163,17 @@ public class PlayerController : MonoBehaviour
         //only turn on running animation, when player is running
         bool playerHasHorizontalMovement = Mathf.Abs(rigidbodyPlayer.velocity.x) > Mathf.Epsilon;
 
+        if(playerHasDoubleJumped) return;
         animatorPlayer.SetBool("isRunning", playerHasHorizontalMovement);
     }
 
     // manages the animations for jumping and falling
     private void Fall()
     {
-        if(! PlayerOnGround())
+        bool playerIsOnGround = playerFeet.IsTouchingLayers(LayerMask.GetMask("Terrain"));
+        if(! playerIsOnGround)
         {
-            if(isDashing) return;
+            if(playerHasDoubleJumped || isDashing) return;
 
             playerHasUpwardMovement = rigidbodyPlayer.velocity.y > Mathf.Epsilon;
             if(playerHasUpwardMovement)
@@ -211,44 +192,20 @@ public class PlayerController : MonoBehaviour
         animatorPlayer.SetBool("isJumping", false);
     }
 
-    // slows down the player, when moving against a wall
-    private void WallSlide()
-    {
-        if(! PlayerOnGround() && PlayerOnWall() && moveInput.x != 0)
-        {
-            isWallSliding = true;
-            animatorPlayer.SetBool("isSliding", true);
-            rigidbodyPlayer.velocity = new Vector2(moveInput.x, Mathf.Clamp(rigidbodyPlayer.velocity.y, -wallSlideSpeed, float.MaxValue));
-        }
-        else
-        {
-            isWallSliding = false;
-            animatorPlayer.SetBool("isSliding", false);
-        }
-    }
-
     // necessary changes made, when touching the ground
+    // 1. re-enable double jump
     private void UpdateOnGround()
     {
-        if(! PlayerOnGround()) return;
+        LayerMask terrainLayer = LayerMask.GetMask("Terrain");
+        if(! playerFeet.IsTouchingLayers(terrainLayer)) return;
 
-        // re-enable dash
+        playerHasDoubleJumped = false;
+        animatorPlayer.SetBool("isDoubleJumping", false);
+
         if(! onCooldown)
         {
             canDash = true;
         }
-    }
-
-    // used for correct jumping, dashing etc.
-    public bool PlayerOnGround()
-    {
-        return playerFeet.IsTouchingLayers(LayerMask.GetMask("Terrain")) || playerFeet.IsTouchingLayers(LayerMask.GetMask("Platforms"));
-    }
-
-    // used for correct wall jumping
-    public bool PlayerOnWall()
-    {
-        return playerFront.IsTouchingLayers(LayerMask.GetMask("Terrain"));
     }
 
     public bool GetPlayerHasUpwardMovement()
