@@ -11,8 +11,10 @@ public class PlayerController : MonoBehaviour
     [Header("Movement")]
     [SerializeField] float runVelocity = 5f;
     [SerializeField] float jumpVelocity = 5f;
+    [SerializeField] float freezeOnAwake = 0.3f;
     private Vector2 moveInput;
     private bool playerHasUpwardMovement;
+    private bool frozen = true;
 
     // Contains the individual colliders to be used for the player
     [Header("Collider Components")]
@@ -42,22 +44,33 @@ public class PlayerController : MonoBehaviour
     private Rigidbody2D rigidbodyPlayer;
     private Animator animatorPlayer;
     private TrailRenderer trailRendererPlayer;
+    private PlayerCollisions playerCollisions;
 
     // other variables
     private float originalGravity;
     private bool onCooldown;
+
 
     void Awake()
     {
         rigidbodyPlayer = GetComponent<Rigidbody2D>();
         animatorPlayer = GetComponent<Animator>();
         trailRendererPlayer = GetComponent<TrailRenderer>();
+        playerCollisions = GetComponent<PlayerCollisions>();
         originalGravity = rigidbodyPlayer.gravityScale;
+
+        Invoke("UnfreezePlayer", freezeOnAwake);
     }
 
     // NOTE: do not put FlipPlayer() before Run(), or it will break
     void Update()
     {
+
+        if(! playerCollisions.GetIsAlive() || frozen)
+        {
+            return;
+        }
+
         // state updates
         UpdateOnGround();
         Fall();
@@ -69,16 +82,8 @@ public class PlayerController : MonoBehaviour
         FlipPlayer();
     }
 
-    // flips the player's sprite correctly
-    private void FlipPlayer()
-    {
-        bool playerHasHorizontalSpeed = Mathf.Abs(rigidbodyPlayer.velocity.x) > Mathf.Epsilon;
 
-        if(playerHasHorizontalSpeed)
-        {
-            transform.localScale = new Vector2(Mathf.Sign(rigidbodyPlayer.velocity.x), 1f);
-        }
-    }
+    // -----Controls-----
 
     // method for move input in InputSystem
     private void OnMove(InputValue value)
@@ -224,6 +229,30 @@ public class PlayerController : MonoBehaviour
         {
             isWallSliding = false;
             animatorPlayer.SetBool("isSliding", false);
+        }
+    }
+
+
+    // -----other methods-----
+
+    // used to shortly freeze the player in the beginning
+    public void UnfreezePlayer()
+    {
+        rigidbodyPlayer.bodyType = RigidbodyType2D.Dynamic;
+        frozen = false;
+    }
+
+
+    // -----Updates and State Checks-----
+
+    // flips the player's sprite correctly
+    private void FlipPlayer()
+    {
+        bool playerHasHorizontalSpeed = Mathf.Abs(rigidbodyPlayer.velocity.x) > Mathf.Epsilon;
+
+        if(playerHasHorizontalSpeed)
+        {
+            transform.localScale = new Vector2(Mathf.Sign(rigidbodyPlayer.velocity.x), 1f);
         }
     }
 

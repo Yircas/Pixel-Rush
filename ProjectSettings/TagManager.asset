@@ -3,7 +3,8 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags: []
+  tags:
+  - Fruit
   layers:
   - Default
   - TransparentFX
@@ -17,7 +18,7 @@ TagManager:
   - PlayerBody
   - PlayerFeet
   - Platforms
-  - 
+  - Fruits
   - 
   - 
   - 
@@ -59,6 +60,6 @@ TagManager:
   - name: Player
     uniqueID: 928301071
     locked: 0
-  - name: 
+  - name: Collectables
     uniqueID: 3794071529
     locked: 0
