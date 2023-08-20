@@ -28,7 +28,7 @@ MonoBehaviour:
     m_To: PlayerIdleCamera
     m_Blend:
       m_Style: 1
-      m_Time: 5
+      m_Time: 3
       m_CustomCurve:
         serializedVersion: 2
         m_Curve: []

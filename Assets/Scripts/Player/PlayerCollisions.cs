@@ -21,12 +21,17 @@ public class PlayerCollisions : MonoBehaviour
     // Layers
     private LayerMask trap;
 
+    // Timer
+    private Timer timer;
+
     void Awake()
     {
         GetLayers();
         rigidbodyPlayer = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
         sessionManager = FindObjectOfType<SessionManager>();
+        timer = FindObjectOfType<Timer>();
+        timer.player = this;
     }
 
     

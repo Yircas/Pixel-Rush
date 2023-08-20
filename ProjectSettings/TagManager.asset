@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 2
   tags:
   - Fruit
+  - SessionManager
   layers:
   - Default
   - TransparentFX
@@ -18,7 +19,7 @@ TagManager:
   - PlayerBody
   - PlayerFeet
   - Platforms
-  - Fruits
+  - Collectables
   - 
   - 
   - 
@@ -54,12 +55,15 @@ TagManager:
   - name: Traps
     uniqueID: 107077825
     locked: 0
+  - name: Particles
+    uniqueID: 3696801035
+    locked: 0
   - name: Enemies
     uniqueID: 2635192761
     locked: 0
-  - name: Player
-    uniqueID: 928301071
-    locked: 0
   - name: Collectables
     uniqueID: 3794071529
+    locked: 0
+  - name: Player
+    uniqueID: 928301071
     locked: 0

@@ -40,6 +40,7 @@ public class PlayerController : MonoBehaviour
     private bool isWallJumping;
     private float flipX;
 
+
     // referenced components
     private Rigidbody2D rigidbodyPlayer;
     private Animator animatorPlayer;
@@ -49,7 +50,6 @@ public class PlayerController : MonoBehaviour
     // other variables
     private float originalGravity;
     private bool onCooldown;
-
 
     void Awake()
     {
